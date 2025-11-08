@@ -1,0 +1,427 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define FILA 10
+#define COLU 10
+#define NAVES 4
+
+void inicializar_tablero(char Tablero[FILA][COLU]){
+	
+	for(int i=0;i<FILA;i++){
+		for(int j=0;j<COLU;j++){
+			Tablero[i][j] = '~';
+		}
+	}
+}
+
+void mostrar_tablero(char Tablero[FILA][COLU]){
+	
+	printf("    0  1  2  3  4  5  6  7  8  9 \n");
+	printf("   ------------------------------\n");
+	
+	for(int i=0;i<FILA;i++){
+		printf("%2d|", i);
+		for(int j=0;j<COLU;j++){
+			if(j==COLU-1){
+				printf(" %c |", Tablero[i][j]);
+			}else{
+				printf(" %c ", Tablero[i][j]);
+			}
+		}
+		printf("\n");
+	}
+	
+	printf("   ------------------------------\n");
+}
+
+typedef struct{
+	
+	char nombre[20];
+	int tamano;
+	int golpesRecibidos;
+	//Para ubicacion en tablero
+	int filaInicio;
+	int coluInicio;
+	char orientacion; //Vertical "V", Horizontal "H"
+	
+}Nave;
+
+void datos_naves(Nave naves[]){
+	//Portaaiones
+	strcpy(naves[0].nombre, "Portaaviones"); naves[0].tamano=5; naves[0].golpesRecibidos=0;
+	//Acorazado
+	strcpy(naves[1].nombre, "Acorazado"); naves[1].tamano=4; naves[1].golpesRecibidos=0;
+	//Crucero
+	strcpy(naves[2].nombre, "Crucero"); naves[2].tamano=3; naves[2].golpesRecibidos=0;
+	//Destructor
+	strcpy(naves[3].nombre, "Destructor"); naves[3].tamano=2; naves[3].golpesRecibidos=0;
+}
+
+void mostrar_info_naves(Nave naves[]){
+	
+	for(int i=0;i<NAVES;i++){
+		printf("Nombre: %-14s | Tamano: %2d | Golpes: %2d\n", naves[i].nombre, naves[i].tamano, naves[i].golpesRecibidos);
+	}
+}
+	
+
+int validar_colocacion(char Tablero[FILA][COLU], int f, int c, int tamano, char orientacion){
+	
+	orientacion= toupper(orientacion); //Para convertir a mayusculas
+	
+	if(f<0 || f>=FILA || c<0 || c>=COLU){
+		printf("ERROR. Posicion (%d, %d) fuera de Tablero [0 - %d, 0 - %d]\n", f, c, FILA-1, COLU-1);
+		return 0;
+	}
+	
+	int filaFinal;
+	int coluFinal; //Para validar espacio
+	
+	if(orientacion == 'H'){ //Para validar horizontal sin que se salga del tablero por la derecha
+		coluFinal = c + tamano - 1; //El -1 es por el indice. Ejemplo c=0 ta=5 indice= 4 por tablero iniciar del 0
+		filaFinal = f;
+		
+		if(coluFinal>=COLU){
+				printf("ERROR. Posicion (%d, %d) sobresale de Tablero [Columna %d]\n", f, c, coluFinal);
+				return 0;
+		}
+	}else if(orientacion == 'V'){
+		coluFinal = c;
+		filaFinal = f + tamano - 1;
+		
+		if(filaFinal>=FILA){
+			printf("ERROR. Posicion (%d, %d) sobresale de Tablero [Fila %d]\n", f, c, filaFinal);
+			return 0;
+		}
+	}else{
+		printf("ERROR. Ingrese 'V' o 'H' para indicar orientacion\n");
+		return 0;
+	}
+	
+	for(int i=0; i<tamano ; i++){ //Para evitar sobreposicion
+	
+		int filaActual = f;
+		int coluActual = c;
+		
+		if(orientacion == 'H'){ //Horizontal corre en columnas
+			coluActual += i;
+		}else{
+			filaActual +=i; //Vertical corre en filas
+		}
+		
+		if(Tablero[filaActual][coluActual] != '~'){
+			printf("ERROR. Interseccion (%d, %d). Casillas ocupadas\n", filaActual,coluActual);
+			return 0;
+		}
+	
+	}
+	
+	return 1; //Si pasa todas las validaciones
+}
+
+void colocar_nave(char Tablero[FILA][COLU], Nave *nave, int f, int c, char orientacion){
+	//Guardar informacion en datos de la nave
+	nave->filaInicio = f;
+	nave->coluInicio = c;
+	nave->orientacion = toupper(orientacion);	
+	
+	for(int i=0; i<nave->tamano; i++){
+		
+		int filaActual = f;
+		int coluActual = c;
+		
+		if(nave->orientacion == 'H'){ //itera en las columnas a escribir
+			coluActual+=i;
+		}else{
+			filaActual+=i;
+		}
+		Tablero[filaActual][coluActual] = nave->nombre[0]; //Coloca inicial de la nave
+	}
+}
+	
+void solicitar_colocacion(char Tablero[FILA][COLU], Nave *naveActual){
+	
+	do{
+	
+		int f;
+		int c;
+		char orientacion;
+	
+		printf("Ingrese la fila de inicio (0-%d): ", FILA - 1);
+		if (scanf("%d", &f) != 1) { // Error de lectura (ej. ingresó letra)
+            while (getchar() != '\n'); // Limpia buffer
+            printf("Entrada de fila invalida. Reintente.\n");
+            continue; // Vuelve al inicio del do-while
+        }
+		
+		printf("Ingrese la columna de inicio (0-%d): ", COLU - 1);
+		if (scanf("%d", &c) != 1) { // Error de lectura (ej. ingresó letra)
+            while (getchar() != '\n'); // Limpia buffer
+            printf("Entrada de fila invalida. Reintente.\n");
+            continue; // Vuelve al inicio del do-while
+        }
+		
+		printf("Ingrese la orientacion (V / H): ");
+		scanf(" %c",&orientacion);
+	
+		if(validar_colocacion(Tablero, f, c, naveActual->tamano, orientacion)==1){
+		
+			colocar_nave(Tablero, naveActual, f, c, orientacion);
+			break;
+		} //Sale del do-while si la validacion fue correcta sino repite bucle
+	}while(1);	
+}	
+
+void colocacion_IA(char Tablero[FILA][COLU], Nave navesIA[]){
+	
+	printf("La IA esta acomodando sus Naves...\n");
+	
+	for(int i=0; i<NAVES; i++){ //Iteramos en la naves
+	
+		int f_rand; //Creo variable que almacenan la respuesta
+		int c_rand;
+		char orientacion_rand;
+		
+		do{
+			
+			f_rand = rand() % FILA; // Asigno valores aleatorios del 0 al 9
+			c_rand = rand() % COLU;
+			
+			if(rand() % 2 == 0){
+				orientacion_rand = 'H';
+			}else{
+				orientacion_rand = 'V';
+			}
+			
+		}while(validar_colocacion(Tablero, f_rand, c_rand, navesIA->tamano, orientacion_rand)==0); //Hasta que sea 1
+		
+		colocar_nave(Tablero, &navesIA[i], f_rand, c_rand, orientacion_rand); //Si es valido el movimiento se coloca
+	}
+		
+	printf("La IA preparo su tablero...\n");	
+}
+
+int validar_disparo(char TableroDis[FILA][COLU], char TableroObj[FILA][COLU], Nave naveDisparo[], int fd, int cd){
+	// TableroDis = tablero visible, TableroObj = Real con las naves
+	// -1 para error (reintento)); 0 perdida de turno; 1 para tocado; 2 para hundido
+	if(fd<0 || fd>=10 || cd<0 || cd>=10){
+		printf("ERROR. Disparo fuera de tablero [%d, %d], Intente de nuevo.\n", fd, cd);
+		return -1;
+	} 
+	
+	if(TableroDis[fd][cd] =='O' || TableroDis[fd][cd] == 'X'){ //verificar que no haya sido disparado en el mismo lugar, en caso de ser pierde turno
+		printf("Ya diparaste a esta ubicacion [%d, %d], ¡Pierdes el turno!.\n", fd, cd);
+		return 0;
+	}
+	
+	//Si es valido entonces verificamos si toca agua o nave
+	char celdaDisparo = TableroObj[fd][cd];
+	
+	if(celdaDisparo == '~'){ //si dispara en agua escribe O
+		TableroDis[fd][cd] = 'O'; //Marcar disparo en tablero visible
+		TableroObj[fd][cd] = 'O'; //marcar disparo en el tablero real
+		
+		printf("¡AGUA [%d, %d]!, el disparo ha fallado.\n", fd, cd);
+		return 0; //pierde turno
+	}else{
+		
+		for(int i=0; i<NAVES; i++){
+			
+			if(naveDisparo[i].nombre[0] == celdaDisparo){ //verificar nave tocada
+				
+				naveDisparo[i].golpesRecibidos++; //registramos golpes
+				
+				TableroDis[fd][cd] = 'X';
+				TableroObj[fd][cd] = 'X';
+				
+				if(naveDisparo[i].golpesRecibidos == naveDisparo[i].tamano){
+					printf("¡Tocado y HUNDIDO el %s!\n", naveDisparo[i].nombre);
+					return 2;
+				}else{
+					printf("¡Haz Tocado a la Nave %s (Golpes: %d/%d)\n", naveDisparo[i].nombre, naveDisparo[i].golpesRecibidos, naveDisparo[i].tamano);
+					return 1;
+				}	
+			}
+			
+		}
+	}
+	return 0;
+}
+
+void solicitar_disparo(int *fd, int *cd){
+	
+	do {
+        int ftemp;
+		int ctemp; // Inicializamos las variables con valores temporales
+
+        printf("\n--- TURNO DE ATAQUE ---\n");
+        
+        printf("Ingrese Fila de ataque (0-%d): ", FILA - 1);
+        if(scanf("%d", &ftemp) != 1){ 
+            while (getchar() != '\n'); // Limpia el buffer de entrada
+            printf("Entrada de fila inválida (debe ser un número).\n");
+            continue; // Vuelve al inicio del do-while
+        }
+        
+        printf("Ingrese Columna de ataque (0-%d): ", COLU - 1);
+        if(scanf("%d", &ctemp) != 1){
+            while (getchar() != '\n'); // Limpia el buffer de entrada
+            printf("Entrada de columna inválida (debe ser un número).\n");
+            continue; // Vuelve al inicio del do-while
+        }
+
+        if(ftemp >= 0 && ftemp < FILA && ctemp >= 0 && ctemp < COLU){ //validar este dentro del tablero
+            
+			*fd = ftemp;
+            *cd = ctemp; //Con valores validos, los guardamos en la direccion
+            while (getchar() != '\n'); 
+            
+            break; // Salir del bucle
+            
+        }else{
+            printf("ERROR: Coordenadas (%d, %d) fuera del rango [0-%d]. Reintente.\n", ftemp, ctemp, FILA - 1);
+        }
+    }while (1); // Bucle infinito que solo se rompe con 'break' si es válido
+}
+
+void turno_Jugador(char TableroIA[FILA][COLU], char TableroDisparos[FILA][COLU], Nave navesIA[]){
+	
+	int filaDis;
+	int coluDis;
+	int resultado;
+	
+	do{
+		mostrar_tablero(TableroDisparos);
+		
+		solicitar_disparo(&filaDis, &coluDis);	
+		resultado = validar_disparo(TableroDisparos, TableroIA, navesIA, filaDis, coluDis);
+	}while(resultado == -1); //repite bucle mientras sea error, sino pierde turno
+}
+
+void turno_IA(char TableroJugador[FILA][COLU], Nave navesJugador[]){
+	
+	int fDis;
+	int cDis;
+	int resultado;
+	
+	printf("PLANEANDO DISPARO DE IA...\n");
+	do{
+		fDis = rand() % FILA;
+		cDis = rand() % COLU;
+		
+		
+		if(TableroJugador[fDis][cDis] == 'X' || TableroJugador[fDis][cDis] == 'O'){ //Si ya se ha tocado o disparado en mismo lugar, reintenta
+			resultado = 0;
+		}else{
+			resultado = validar_disparo(TableroJugador, TableroJugador, navesJugador, fDis, cDis);
+		}
+	}while(resultado == -1);
+	
+	printf("La IA Disparo a la fila %d, columna %d\n", fDis, cDis);
+}
+
+int quedan_naves(Nave naves[]){
+	
+	int navesAFlote = NAVES;
+	
+	for(int i=0; i<NAVES; i++){
+		if(naves[i].golpesRecibidos == naves[i].tamano){ //Si las naves estan hundidas
+			navesAFlote--;
+		}	 
+	}
+	
+	return navesAFlote;
+	
+}
+
+int main(){
+	
+	srand(time(NULL)); //Para aleatorio
+	
+	char TableroJugador[FILA][COLU]; //Establezco Variables
+	char TableroIA[FILA][COLU];
+	char TableroDisparos[FILA][COLU];
+	Nave naves[NAVES];
+	Nave navesIA[NAVES];
+	
+	inicializar_tablero(TableroJugador); //Inicializo tableros
+	inicializar_tablero(TableroIA);
+	inicializar_tablero(TableroDisparos);
+	datos_naves(naves);
+	datos_naves(navesIA);
+	
+	printf("Holaaa, jugaras GUERRA NAVAL. Porfa, coloca tus %d naves:\n\n", NAVES);
+	mostrar_tablero(TableroJugador);
+
+	for(int i=0; i<NAVES; i++){
+		mostrar_info_naves(naves);
+		
+		printf("\n Coloque su %s \n",naves[i].nombre);
+		solicitar_colocacion(TableroJugador, &naves[i]);
+		system("cls");
+		mostrar_tablero(TableroJugador);
+	}
+	
+	while(getchar() != '\n'); //limpiar buffer para evitar errores
+	printf("Colocacion Terminada... Presiona ENTER para continuar con la IA\n");
+	getchar();
+	
+	system("cls");
+	colocacion_IA(TableroIA, navesIA);
+	while(getchar() != '\n');
+	
+	int turno = 1;
+	
+	while(quedan_naves(naves)>0 && quedan_naves(navesIA)>0){
+		system("cls");
+		
+		printf("\t\t========== TURNO %d ==========\n\n", turno);
+        
+        // --- TURNO DEL JUGADOR ---
+		printf("TU TABLERO (defensa): \n");
+		mostrar_tablero(TableroJugador);
+        printf("TABLERO ENEMIGO (ataque): \n");
+		turno_Jugador(TableroIA, TableroDisparos, navesIA);
+		
+		if(quedan_naves(navesIA) == 0) break; // Comprueba si ganó el jugador
+		
+        printf("\nPresiona ENTER para continuar al turno de la IA...\n");
+        while(getchar() != '\n'); 
+		getchar();
+		
+        // --- TURNO DE LA IA ---
+        system("cls");
+        printf("\t\t========== TURNO %d ==========\n\n", turno);
+        printf("--- ATAQUE ENEMIGO ---\n");
+        printf("TU TABLERO (defensa) ACTUALIZADO:\n");
+        turno_IA(TableroJugador, naves); // La IA dispara a tu tablero
+        mostrar_tablero(TableroJugador);
+        
+        if(quedan_naves(naves) == 0) break; // Comprueba si ganó la IA
+        
+        printf("\nGolpe recibido. Presiona ENTER para tu siguiente turno...\n");
+        while(getchar() != '\n');
+        getchar();	
+		
+		turno++;
+	}
+	
+	system("cls");
+	
+	printf("\t========== RESULTADOS ==========\n");
+	printf("Naves Jugador Restantes: %d | Naves IA Restantes: %d\n", quedan_naves(naves), quedan_naves(navesIA));
+	
+	if(quedan_naves(navesIA) == 0){
+		printf("\t\t\t ¡FELICIDADES! Hundiste la flota enemiga HAS GANADO...\n");
+		printf("\t\t TABLERO PERDEDOR:\n");
+		mostrar_tablero(TableroIA);
+	}else{
+		printf("\t\t\t ¡Oh No! La IA te DERROTO :(\n");
+		printf("\t\t TABLERO PERDEDOR:\n");
+		mostrar_tablero(TableroJugador);
+	}
+	return 0;
+}
